@@ -1,0 +1,441 @@
+
+Public Declare Function SetForegroundWindow Lib "user32" (ByVal HWND As Long) As Long
+Public sheet As String
+
+Sub refactored_entering_org()
+
+'This will load a webpage in IE
+    sheet = "Sheet1"
+    Dim i As Long
+    Dim URL As String
+    Dim cityName As String
+    Dim cityCountry As String
+    Dim combinedCityAndCountry As String
+    Dim companyName As String
+    Dim companyNotes As String
+    Dim Workbook As Workbook
+    Dim IE As InternetExplorer
+    Dim doc As HTMLDocument
+    Dim objElement As Object
+    Dim objCollection As Object
+    Dim HWNDSrc As Long
+    Dim frame As HTMLDocument
+    Dim cell As Integer
+    
+    'Create InternetExplorer Object
+    Set IE = New InternetExplorerMedium
+    Set Workbook = ActiveWorkbook
+    
+    For lastORG = 2 To 2553
+        If ActiveWorkbook.Worksheets(sheet).Range("B" & lastORG).value = "" Then Exit For
+    Next lastORG
+    
+    cell = lastORG
+    cityName = Workbook.Worksheets(sheet).Range("K" & cell).value
+    cityCountry = Workbook.Worksheets(sheet).Range("H" & cell).value
+    combinedCityAndCountry = cityName & ", " & cityCountry
+    
+     If Workbook.Worksheets(sheet).Range("E" & cell).value <> "" Then
+            Workbook.Worksheets(sheet).Range("P" & cell).value = "Project Bayeux, BVD " & Workbook.Worksheets(sheet).Range("D" & cell).value & ", " & "SWIFT " & Workbook.Worksheets(sheet).Range("E" & cell).value & ", " & "oabbas, " & Format(Date, "MM/DD/YYYY")
+        Else
+            Workbook.Worksheets(sheet).Range("P" & cell).value = "Project Bayeux, BVD " & Workbook.Worksheets(sheet).Range("D" & cell).value & ", " & "oabbas, " & Format(Date, "MM/DD/YYYY")
+    End If
+    
+    IE.Visible = True
+    
+    'Define URL
+   URL = "https://moodysnrde.ad.moodys.net/Moodys.nRDE.UI/BOFrame.aspx?Parameters=Moodys.nRde.IIssuer_new&show=AssociatedAliases.aspx?Parameters=Moodys.nRde.IIssuer_new&CollectionType=Aliases"
+
+    IE.Navigate URL
+    
+    ' Statusbar let's user know website is loading
+    Application.StatusBar = URL & " is loading. Please wait..."
+ 
+    ' Wait while IE loading...
+
+    Do
+        DoEvents
+    Loop Until IE.ReadyState = READYSTATE_COMPLETE
+    
+    'Webpage Loaded
+    Application.StatusBar = URL & " Loaded"
+    
+    'Get Window ID for IE so we can set it as activate window
+    HWNDSrc = IE.HWND
+    'Set IE as Active Window
+    SetForegroundWindow HWNDSrc
+    
+    companyName = Left(ActiveWorkbook.Worksheets(sheet).Range("G" & cell).value, 50)
+    companyNotes = ActiveWorkbook.Worksheets(sheet).Range("P" & cell).value
+    
+    Set doc = IE.Document
+    Set frame = doc.frames("main").Document
+     
+   Dim trimmedLegalName As String
+   trimmedLegalName = Left(Workbook.Worksheets(sheet).Range("G" & cell).value, 45)
+   
+   frame.getElementById("AliasType").value = "1768"
+   frame.getElementById("AliasName").value = trimmedLegalName
+   frame.getElementById("Addbtn").Click
+    
+    Do
+        DoEvents
+    Loop Until IE.ReadyState = READYSTATE_COMPLETE
+    
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Done entering New Org Val~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If ActiveWorkbook.Worksheets(sheet).Range("F" & cell).value <> "" Then
+
+    Set doc = Nothing
+    Set frame = Nothing
+    
+    URL = "https://moodysnrde.ad.moodys.net/Moodys.nRDE.UI/BOFrame.aspx?Parameters=Moodys.nRde.IIssuer_new&show=AssociatedIdentifiers.aspx?Parameters=Moodys.nRde.IIssuer_new&CollectionType=Identifiers"
+    
+    IE.Navigate URL
+    
+    Do
+        DoEvents
+    Loop Until IE.ReadyState = READYSTATE_COMPLETE
+    
+    Set doc = IE.Document
+    Set frame = doc.frames("main").Document
+    
+    frame.getElementById("IDNumber").value = ActiveWorkbook.Worksheets(sheet).Range("F" & cell).value
+    frame.getElementById("IdentifierType").value = "5168277"
+    frame.getElementById("Addbtn").Click
+    
+End If
+
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~DoneLEI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Set doc = Nothing
+    Set frame = Nothing
+    
+    URL = "https://moodysnrde.ad.moodys.net/Moodys.nRDE.UI/BOFrame.aspx?Parameters=Moodys.nRde.IIssuer_new&show=AssociatedBusnLines.aspx?Parameters=Moodys.nRde.IIssuer_new&CollectionType=Business%20Lines"
+
+    IE.Navigate URL
+        
+    Do
+        DoEvents
+    Loop Until IE.ReadyState = READYSTATE_COMPLETE
+    
+    Set doc = IE.Document
+    Set frame = doc.frames("main").Document
+    
+    frame.getElementById("businessLineTypes").selectedIndex = 4
+    frame.getElementById("businessLineTypes").Click
+    frame.getElementById("businessLineTypes").FireEvent ("onchange")
+
+    frame.getElementById("broadBusinessLines").selectedIndex = 1
+    frame.getElementById("broadBusinessLines").Click
+    frame.getElementById("broadBusinessLines").FireEvent ("onchange")
+    
+    frame.getElementById("specificBusinessLines").selectedIndex = 4
+    frame.getElementById("specificBusinessLines").Click
+
+    
+    frame.getElementById("Addbtn").Click
+    
+    '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Done entering biz line~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   
+   Set doc = Nothing
+   Set frame = Nothing
+   
+    URL = "https://moodysnrde.ad.moodys.net/Moodys.nRDE.UI/BOFrame.aspx?Parameters=Moodys.nRde.IIssuer_new&show=Orgheader.aspx?Parameters=Moodys.nRde.IIssuer_new"
+    
+   IE.Navigate URL
+   
+   Do
+        DoEvents
+   Loop Until IE.ReadyState = READYSTATE_COMPLETE
+   
+   Set doc = IE.Document
+   Set frame = doc.frames("main").Document
+   
+    frame.getElementById("LegalName").value = companyName
+    frame.getElementById("OrgType").value = "2688"
+    frame.getElementById("Comments").value = companyNotes
+    frame.getElementById("Domicile_ulbTextBox").value = cityName
+
+    checkLEI (cell)
+    
+    Set IE = Nothing
+    Set objElement = Nothing
+    Set objCollection = Nothing
+
+End Sub
+
+Sub refactored_City_Entry()
+
+'This will load a webpage in IE
+    sheet = "Sheet1"
+    Dim i As Long
+    Dim URL As String
+    Dim cityName As String
+    Dim cityCountry As String
+    Dim combinedCityAndCountry As String
+    Dim companyName As String
+    Dim companyNotes As String
+    Dim Workbook As Workbook
+    Dim IE As InternetExplorer
+    Dim doc As HTMLDocument
+    Dim objElement As Object
+    Dim objCollection As Object
+    Dim HWNDSrc As Long
+    Dim frame As HTMLDocument
+    Dim cell As Integer
+    
+    'Create InternetExplorer Object
+    Set IE = New InternetExplorerMedium
+    Set Workbook = ActiveWorkbook
+        
+    For lastORG = 2 To 2553
+        If ActiveWorkbook.Worksheets(sheet).Range("C" & lastORG).value = "N/A" Then Exit For
+    Next lastORG
+    
+    cell = lastORG
+    cityName = Left(Workbook.Worksheets(sheet).Range("K" & cell).value, 45)
+    cityCountry = Workbook.Worksheets(sheet).Range("H" & cell).value
+
+    
+    companyNotes = "Project Bayeux domicile, oabbas " & Format(Date, "MM/DD/YYYY")
+    
+    IE.Visible = True
+
+    'Define URL
+    
+    URL = "https://moodysnrde.ad.moodys.net/Moodys.nRDE.UI/BOFrame.aspx?Parameters=Moodys.nRde.IIssuer_new&show=AssociatedAliases.aspx?Parameters=Moodys.nRde.IIssuer_new&CollectionType=Aliases"
+
+    IE.Navigate URL
+    
+    ' Statusbar let's user know website is loading
+    Application.StatusBar = URL & " is loading. Please wait..."
+ 
+    ' Wait while IE loading...
+
+    Do
+        DoEvents
+    Loop Until IE.ReadyState = READYSTATE_COMPLETE
+    
+    'Webpage Loaded
+    Application.StatusBar = URL & " Loaded"
+    
+    'Get Window ID for IE so we can set it as activate window
+    HWNDSrc = IE.HWND
+    'Set IE as Active Window
+    SetForegroundWindow HWNDSrc
+
+    Set doc = IE.Document
+    Set frame = doc.frames("main").Document
+        
+    Dim trimmedLegalName As String
+   trimmedLegalName = Left(Workbook.Worksheets(sheet).Range("K" & cell).value, 45)
+ '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Publication PrintName Start~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   frame.getElementById("AliasType").value = "1768"
+   frame.getElementById("AliasName").value = trimmedLegalName
+   frame.getElementById("Addbtn").Click
+ '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Domain Name Start~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   frame.getElementById("AliasType").value = "120306"
+   frame.getElementById("AliasName").value = UCase(Workbook.Worksheets(sheet).Range("K" & cell).value)
+   frame.getElementById("Addbtn").Click
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Publication Domain Name~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   frame.getElementById("AliasType").value = "27286"
+   frame.getElementById("AliasName").value = StrConv(Workbook.Worksheets(sheet).Range("K" & cell).value, vbProperCase)
+   frame.getElementById("Addbtn").Click
+    
+    Do
+        DoEvents
+    Loop Until IE.ReadyState = READYSTATE_COMPLETE
+    
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Done entering New Org Val~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   
+   Set doc = Nothing
+   Set frame = Nothing
+   
+   URL = "https://moodysnrde.ad.moodys.net/Moodys.nRDE.UI/BOFrame.aspx?Parameters=Moodys.nRde.IIssuer_new&show=Orgheader.aspx?Parameters=Moodys.nRde.IIssuer_new"
+   
+   IE.Navigate URL
+   
+   Do
+        DoEvents
+   Loop Until IE.ReadyState = READYSTATE_COMPLETE
+   
+   Set doc = IE.Document
+   Set frame = doc.frames("main").Document
+   
+   frame.getElementById("isGovDomain").Click
+    frame.getElementById("LegalName").value = cityName
+    frame.getElementById("OrgType").value = "2685"
+    frame.getElementById("Comments").value = companyNotes
+    
+    'frame.getElementById("ApplyBtn").Click
+    
+    frame.getElementById("Domicile_ulbTextBox").value = cityCountry
+
+    Workbook.Worksheets(sheet).Range("C" & cell).value = "~"
+    
+    Set IE = Nothing
+    Set objElement = Nothing
+    Set objCollection = Nothing
+
+End Sub
+
+Sub enter_org()
+
+refactored_entering_org
+
+End Sub
+
+Sub enter_city()
+
+refactored_City_Entry
+
+End Sub
+
+Sub grab_org()
+
+get_org
+
+End Sub
+
+Sub get_org()
+
+'This will load a webpage in IE
+    sheet = "Sheet1"
+    Dim i As Long
+    Dim URL As String
+    Dim cityName As String
+    Dim cityCountry As String
+    Dim combinedCityAndCountry As String
+    Dim companyName As String
+    Dim companyNotes As String
+    Dim Workbook As Workbook
+    Dim IE As InternetExplorer
+    Dim doc As HTMLDocument
+    Dim objElement As Object
+    Dim objCollection As Object
+    Dim HWNDSrc As Long
+    Dim frame As HTMLDocument
+    Dim cell As Integer
+    
+    'Create InternetExplorer Object
+    Set IE = New InternetExplorerMedium
+        
+    Set Workbook = ActiveWorkbook
+    
+    For lastORG = 2 To 2553
+        If ActiveWorkbook.Worksheets(sheet).Range("B" & lastORG).value = "" Then Exit For
+    Next lastORG
+    
+    cell = lastORG
+    cityName = Workbook.Worksheets(sheet).Range("K" & cell).value
+    cityCountry = Workbook.Worksheets(sheet).Range("H" & cell).value
+    combinedCityAndCountry = cityName & ", " & cityCountry
+    
+    companyNotes = "Project Bayeux domicile, oabbas" & Format(Date, "MM/DD/YYYY")
+    
+    IE.Visible = True
+
+    'Define URL
+    
+    URL = "https://moodysnrde.ad.moodys.net/Moodys.nRDE.UI/BOFrame.aspx?Parameters=&show=BusinessObjectSearcher.aspx?Parameters=0_Moodys.nRde.IIssuer_true_MoodysTree.aspx"
+
+    IE.Navigate URL
+    
+    ' Statusbar let's user know website is loading
+    Application.StatusBar = URL & " is loading. Please wait..."
+ 
+    ' Wait while IE loading...
+
+    Do
+        DoEvents
+    Loop Until IE.ReadyState = READYSTATE_COMPLETE
+    
+    'Webpage Loaded
+    Application.StatusBar = URL & " Loaded"
+    
+    'Get Window ID for IE so we can set it as activate window
+    HWNDSrc = IE.HWND
+    'Set IE as Active Window
+    SetForegroundWindow HWNDSrc
+
+    Set doc = IE.Document
+    Set frame = doc.frames("main").Document
+    
+    frame.getElementById("Param_2").value = Left(ActiveWorkbook.Worksheets(sheet).Range("G" & cell).value, 50)
+    frame.getElementById("Submit2").Click
+
+End Sub
+
+Private Sub inputLEI()
+
+   sheet = "Sheet1"
+    Dim i As Long
+    Dim URL As String
+    Dim capturedLEIValue As String
+    Dim capturedORGValue As String
+    Dim Workbook As Workbook
+    Dim IE As InternetExplorer
+    Dim doc As HTMLDocument
+    Dim objElement As Object
+    Dim objCollection As Object
+    Dim HWNDSrc As Long
+    Dim frame As HTMLDocument
+    Dim cell As Integer
+    
+    'Create InternetExplorer Object
+    Set IE = New InternetExplorerMedium
+        
+    Set Workbook = ActiveWorkbook
+    
+    For lastORG = 2 To 2553
+        If ActiveWorkbook.Worksheets(sheet).Range("A" & lastORG).value = "" Then Exit For
+    Next lastORG
+    
+    cell = lastORG
+    
+    'test value, we would remove this after code works
+    For LEIValue = 2 To 2553
+        If ActiveWorkbook.Worksheets(sheet).Range("F" & LEIValue).value <> "" Then Exit For
+    Next LEIValue
+    
+    capturedORGValue = ActiveWorkbook.Worksheets(sheet).Range("B" & LEIValue).value
+    capturedLEIValue = ActiveWorkbook.Worksheets(sheet).Range("F" & LEIValue).value
+    
+    IE.Visible = True
+
+    'Define URL
+    
+    'This URL Opens the ORG Search'
+    URL = "https://moodysnrde.ad.moodys.net/Moodys.nRDE.UI/BOFrame.aspx?Parameters=Moodys.nRde.IIssuer_new&show=AssociatedIdentifiers.aspx?Parameters=Moodys.nRde.IIssuer_new&CollectionType=Identifiers"
+    
+    IE.Navigate URL
+    
+    ' Statusbar let's user know website is loading
+    Application.StatusBar = URL & " is loading. Please wait..."
+ 
+    ' Wait while IE loading...
+    Do
+        DoEvents
+    Loop Until IE.ReadyState = READYSTATE_COMPLETE
+    
+    'Webpage Loaded
+    Application.StatusBar = URL & " Loaded"
+    
+    'Get Window ID for IE so we can set it as activate window
+    HWNDSrc = IE.HWND
+    'Set IE as Active Window
+    SetForegroundWindow HWNDSrc
+
+    Set doc = IE.Document
+    Set frame = doc.frames("Main").Document
+    
+    frame.getElementById("IDNumber").value = capturedLEIValue
+    frame.getElementById("IdentifierType").value = "5168277"
+    frame.getElementById("Addbtn").Click
+    
+    IE.Quit
+    Set IE = Nothing
+    Set objElement = Nothing
+    Set objCollection = Nothing
+    
+End Sub
